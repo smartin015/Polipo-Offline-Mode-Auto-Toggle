@@ -1,0 +1,52 @@
+#!/bin/sh
+##########################################
+#What:  "99polipo-online" shell script
+#Who:   Scott Martin (smartin015@gmail.com)
+#Where: /etc/NetworkManager/dispatcher.d
+#When:  05/18/2011
+#Why:   Created to automatically switch between polipo's online and offline modes by toggling the status of the #"proxyOffline" environment variable when the user connects/disconnects from the internet.
+#
+#This was originally adapted from dom's "Offlne Web cache with Squid" blog, but since became something far greater.
+#The original script/idea can be found here: http://people.w3.org/~dom/archives/2006/09/offline-web-cache-with-squid/
+##########################################
+
+# Quit if we're called for the loopback
+if [ "$IFACE" = lo ]; then
+        exit 0
+fi
+
+#Following function ripped off from a German site. Allows root to use notify-send to send messages to the active user
+#Source: http://www.edv-krischer.de/wiki/linux/special/vpnc_wlan_fh_koeln#etcnetworkmanagerdispatcherdfhk-vpnc
+notify_me() {
+  ALL_USER="$(users | sort)"
+  echo Desktop-Message to: $ALL_USER
+        for USER_TMP in $ALL_USER; do
+                if [ "$USER_TMP" = "$USER_LAST" ]; then
+                        #if user already notified, continue
+                        continue
+                fi
+                su $USER_TMP -c "XAUTHORITY=/home/$USER_TMP/.Xauthority DISPLAY=:0 notify-send -t 2000 $1 $2"
+                #save last username to avoid double notification
+                USER_LAST=$USER_TMP
+        done
+}
+
+#Get the current IP address - it's empty if not connected to the internet.
+IPADDR="$(ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}')"
+
+#Use cURL to POST the variable change to polipo's web interface, dependent upon status of $IPADDR
+if [ -z "$IPADDR" ] #if we're not connected
+then #set to OFFLINE mode
+/usr/bin/curl -m 5 -d 'proxyOffline=true' http://localhost:8123/polipo/config?
+else #set to ONLINE mode
+/usr/bin/curl -m 5 -d 'proxyOffline=false' http://localhost:8123/polipo/config?
+fi
+
+# notify the user about what we changed (via another cURL request on the config page)
+result=$(curl http://localhost:8123/polipo/config? | grep "proxyOffline" | grep "<td>true</td>")
+if [ -z "$result" ] 
+then 
+	notify_me '"Polipo"' '"Now in online mode"'
+else 
+	notify_me '"Polipo"' '"Now in offline mode"'
+fi
