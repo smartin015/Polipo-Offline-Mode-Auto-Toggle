@@ -1,0 +1,48 @@
+---------- Information ------------
+Polipo Offline Mode Auto Toggle
+By: Scott Martin
+Created: May 19, 2011
+Description: Automatically enables/disables the proxyOffline setting in polipo on network disconnect/connect, respectively. 
+
+---------- Requirements ----------
+- Polipo (package "polipo" in Ubuntu 11.04 repository)
+- Notify-Send (package "libnotify-bin" in Ubuntu 11.04 repo)
+- cURL (package "curl" in 11.04)
+
+Here's the installation command:
+sudo apt-get install polipo libnotify-bin curl
+
+---------- Installation ----------
+After installing the requirements (and with the polipo daemon started - it should do this automatically on install), configure your browser of choice to use the address localhost:8123 as an HTTP proxy. 
+
+This pipes all website requests through polipo, which caches each webpage as it comes through.
+
+Now copy the script to the network manager dispatcher so that it runs automatically on network connect/disconnect:
+sudo cp ./99polipo-online /etc/NetworkManager/dispatcher.d/
+
+Be sure the script is set as executable. Try it out, and see if it works!
+
+
+------ Configuration Changes -----
+The following are a few configuration changes that may be useful when setting up a cache server.
+
+Remember to restart the polipo daemon after making the changes:
+sudo service polipo restart
+
+-------- Viewing the Cache -------
+To view the cache without trying to navigate to a specific site, and to see a list of known hosts, make sure the following is set in /etc/polipo/config.
+(WARNING!!! this is a potential security risk - it allows ANYONE who connects to the web interface the ability to see EVERYONE's browsing history)
+disableIndexing = false
+disableServersList = false
+
+---------- Blacklisting ----------
+Also, polipo can be told to not cache certain websites (e.g. ad links, hit counters, etc.). To do this, edit the 'forbidden' config file:
+gksu gedit /etc/polipo/forbidden
+
+And remove the pound signs from the domains you want to ignore. If you have specific domains, add them here! Also supports regexing.
+
+-------- Allowing Access ---------
+To allow a certain list of IP addresses to access cached pages, modify the allowedClients section and add the IP range:
+allowedClients = 127.0.0.1, 192.168.42.0/24
+
+
