@@ -11,7 +11,7 @@
 ##########################################
 
 # Quit if we're called for the loopback
-if [ "$IFACE" = lo ]; then
+if [ "$1" = lo ]; then
         exit 0
 fi
 
@@ -31,16 +31,16 @@ notify_me() {
         done
 }
 
-#Get the current IP address - it's empty if not connected to the internet.
-IPADDR="$(ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}')"
-
-#Use cURL to POST the variable change to polipo's web interface, dependent upon status of $IPADDR
-if [ -z "$IPADDR" ] #if we're not connected
-then #set to OFFLINE mode
-/usr/bin/curl -m 5 -d 'proxyOffline=true' http://localhost:8123/polipo/config?
-else #set to ONLINE mode
-/usr/bin/curl -m 5 -d 'proxyOffline=false' http://localhost:8123/polipo/config?
-fi
+case "$2" in
+up)
+  #set to ONLINE mode
+  /usr/bin/curl -m 5 -d 'proxyOffline=false' http://localhost:8123/polipo/config?
+  ;;
+down)
+  #set to OFFLINE mode
+  /usr/bin/curl -m 5 -d 'proxyOffline=true' http://localhost:8123/polipo/config?
+  ;;
+esac
 
 # notify the user about what we changed (via another cURL request on the config page)
 result=$(curl http://localhost:8123/polipo/config? | grep "proxyOffline" | grep "<td>true</td>")
